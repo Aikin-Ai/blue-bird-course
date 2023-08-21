@@ -10,7 +10,9 @@ export default async function Home() {
   if (!session) {
     redirect('/login');
   }
-  const { data: tweets } = await supabase.from("tweets").select();
+  const { data: tweets } = await supabase.
+    from("tweets").
+    select();
 
   return (
     <>
