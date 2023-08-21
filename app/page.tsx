@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import AuthButtonServer from './auth-button-server';
 import NewTweet from './new-tweet';
+import Tweets from './tweets';
 
 export default async function Home() {
   const supabase = createServerComponentClient<Database>({ cookies })
@@ -11,20 +12,28 @@ export default async function Home() {
   if (!session) {
     redirect('/login');
   }
-  const { data: tweets } = await supabase.
-    from("tweets").
-    select("*, profiles(*)");
+  const { data } = await supabase
+    .from("tweets")
+    .select("*, author: profiles(*), likes(user_id)")
+    .order("created_at", { ascending: false });
+
+  const tweets = data?.map(tweet => ({
+    ...tweet,
+    author: Array.isArray(tweet.author) ? tweet.author[0] : tweet.author,
+    user_has_liked_tweet: !!tweet.likes.find(
+      (like) => like.user_id === session.user.id
+    ),
+    likes: tweet.likes.length
+  })) ?? [];
 
   return (
-    <>
-      <AuthButtonServer />
-      <NewTweet />
-      <pre>{tweets?.map(tweet => (
-        <div key={tweet.id}>
-          <p>{tweet.profiles?.name} {tweet.profiles?.username}</p>
-          <p>{tweet.title}</p>
-        </div>
-      ))}</pre>
-    </>
+    <div className='w-full max-w-xl mx-auto'>
+      <div className='flex justify-between px-4 py-6 border border-gray-800 border-t-0'>
+        <h1 className='text-xl font-bold'>Home</h1>
+        <AuthButtonServer />
+      </div>
+      <NewTweet user={session.user} />
+      <Tweets tweets={tweets} />
+    </div>
   )
 }
